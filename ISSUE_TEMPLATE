@@ -1,1 +1,78 @@
+---
+name: Bug report
+about: Report a bug or unexpected behavior in EvidenceEngineStudio
+title: "[Bug] "
+labels: bug
+assignees: ""
+---
 
+## Summary
+
+A clear and concise description of the problem.
+
+---
+
+## Environment
+
+Please complete the following information:
+
+- App: EvidenceEngineStudio
+- App version:
+- macOS version:
+- Device model:
+- Xcode version (if relevant):
+- Build type: local / debug / release
+
+---
+
+## Area affected
+
+Which part of the app is affected?
+
+- [ ] Home
+- [ ] Projects
+- [ ] Evidence
+- [ ] Data
+- [ ] Analysis
+- [ ] Hypotheses
+- [ ] Writing
+- [ ] Critique
+- [ ] Exports
+- [ ] Settings
+- [ ] Other
+
+---
+
+## Steps to reproduce
+
+1.
+2.
+3.
+4.
+
+---
+
+## Expected behavior
+
+Describe what you expected to happen.
+
+---
+
+## Actual behavior
+
+Describe what actually happened.
+
+---
+
+## Screenshots or screen recording
+
+If applicable, add screenshots or a short recording.
+
+---
+
+## Console / error output
+
+If applicable, paste any relevant console log, traceback, or Xcode error here.
+
+```text
+Paste logs here
