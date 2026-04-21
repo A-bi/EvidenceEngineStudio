@@ -10,7 +10,7 @@ The intended workflow is that:
 - manuscript drafting remains local
 - critique remains local
 - dataset handling remains local
-- most research logic remains local
+- most research logic remains local and is based on an API guiding to my website and research engine evidenceengine.eu
 
 Online connectivity is only required when the user intentionally uses the linked **EvidenceEngine** literature search layer.
 
