@@ -1,0 +1,173 @@
+name: Build Desktop Releases
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Install Python backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller
+
+      - name: Build backend binaries
+        run: |
+          mkdir backend\bin
+          pyinstaller --onefile --name analysis_backend --distpath backend\bin --workpath backend\build_analysis --specpath backend backend\analysis_backend.py
+          pyinstaller --onefile --name dataset_backend --distpath backend\bin --workpath backend\build_dataset --specpath backend backend\dataset_backend.py
+
+      - name: Build Flutter Windows app
+        run: flutter build windows --release
+
+      - name: Copy backend next to Windows app
+        run: |
+          mkdir build\windows\x64\runner\Release\backend\bin
+          copy backend\bin\analysis_backend.exe build\windows\x64\runner\Release\backend\bin\
+          copy backend\bin\dataset_backend.exe build\windows\x64\runner\Release\backend\bin\
+
+      - name: Zip Windows release
+        run: |
+          powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath EvidenceEngineStudioOpen-Windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceEngineStudioOpen-Windows
+          path: EvidenceEngineStudioOpen-Windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Install Python backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller
+
+      - name: Build backend binaries
+        run: |
+          mkdir -p backend/bin
+          pyinstaller --onefile --name analysis_backend --distpath backend/bin --workpath backend/build_analysis --specpath backend backend/analysis_backend.py
+          pyinstaller --onefile --name dataset_backend --distpath backend/bin --workpath backend/build_dataset --specpath backend backend/dataset_backend.py
+          chmod +x backend/bin/analysis_backend
+          chmod +x backend/bin/dataset_backend
+
+      - name: Build Flutter Linux app
+        run: flutter build linux --release
+
+      - name: Copy backend next to Linux app
+        run: |
+          mkdir -p build/linux/x64/release/bundle/backend/bin
+          cp backend/bin/analysis_backend build/linux/x64/release/bundle/backend/bin/
+          cp backend/bin/dataset_backend build/linux/x64/release/bundle/backend/bin/
+          chmod +x build/linux/x64/release/bundle/backend/bin/analysis_backend
+          chmod +x build/linux/x64/release/bundle/backend/bin/dataset_backend
+
+      - name: Tar Linux release
+        run: |
+          tar -czf EvidenceEngineStudioOpen-Linux.tar.gz -C build/linux/x64/release bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceEngineStudioOpen-Linux
+          path: EvidenceEngineStudioOpen-Linux.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Enable macOS desktop
+        run: flutter config --enable-macos-desktop
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Install Python backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller
+
+      - name: Build backend binaries
+        run: |
+          mkdir -p backend/bin
+          pyinstaller --onefile --name analysis_backend --distpath backend/bin --workpath backend/build_analysis --specpath backend backend/analysis_backend.py
+          pyinstaller --onefile --name dataset_backend --distpath backend/bin --workpath backend/build_dataset --specpath backend backend/dataset_backend.py
+          chmod +x backend/bin/analysis_backend
+          chmod +x backend/bin/dataset_backend
+
+      - name: Build Flutter macOS app
+        run: flutter build macos --release
+
+      - name: Copy backend into macOS app bundle
+        run: |
+          APP="build/macos/Build/Products/Release/evidence_engine_studio_open.app"
+          mkdir -p "$APP/Contents/Resources/backend/bin"
+          cp backend/bin/analysis_backend "$APP/Contents/Resources/backend/bin/"
+          cp backend/bin/dataset_backend "$APP/Contents/Resources/backend/bin/"
+          chmod +x "$APP/Contents/Resources/backend/bin/analysis_backend"
+          chmod +x "$APP/Contents/Resources/backend/bin/dataset_backend"
+
+      - name: Zip macOS app
+        run: |
+          cd build/macos/Build/Products/Release
+          ditto -c -k --sequesterRsrc --keepParent evidence_engine_studio_open.app ../../../../../EvidenceEngineStudioOpen-macOS.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceEngineStudioOpen-macOS
+          path: EvidenceEngineStudioOpen-macOS.zip

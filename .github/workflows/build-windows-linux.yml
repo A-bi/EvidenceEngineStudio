@@ -1,0 +1,117 @@
+name: Build Windows and Linux Releases
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Install Python backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller
+
+      - name: Build backend binaries
+        run: |
+          mkdir backend\bin
+          pyinstaller --onefile --name analysis_backend --distpath backend\bin --workpath backend\build_analysis --specpath backend backend\analysis_backend.py
+          pyinstaller --onefile --name dataset_backend --distpath backend\bin --workpath backend\build_dataset --specpath backend backend\dataset_backend.py
+
+      - name: Build Flutter Windows app
+        run: flutter build windows --release
+
+      - name: Copy backend next to Windows app
+        run: |
+          mkdir build\windows\x64\runner\Release\backend\bin
+          copy backend\bin\analysis_backend.exe build\windows\x64\runner\Release\backend\bin\
+          copy backend\bin\dataset_backend.exe build\windows\x64\runner\Release\backend\bin\
+
+      - name: Create Windows ZIP
+        run: |
+          powershell Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath EvidenceEngineStudioOpen-Windows.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceEngineStudioOpen-Windows
+          path: EvidenceEngineStudioOpen-Windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Enable Linux desktop
+        run: flutter config --enable-linux-desktop
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Install Python backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pyinstaller
+
+      - name: Build backend binaries
+        run: |
+          mkdir -p backend/bin
+          pyinstaller --onefile --name analysis_backend --distpath backend/bin --workpath backend/build_analysis --specpath backend backend/analysis_backend.py
+          pyinstaller --onefile --name dataset_backend --distpath backend/bin --workpath backend/build_dataset --specpath backend backend/dataset_backend.py
+          chmod +x backend/bin/analysis_backend
+          chmod +x backend/bin/dataset_backend
+
+      - name: Build Flutter Linux app
+        run: flutter build linux --release
+
+      - name: Copy backend next to Linux app
+        run: |
+          mkdir -p build/linux/x64/release/bundle/backend/bin
+          cp backend/bin/analysis_backend build/linux/x64/release/bundle/backend/bin/
+          cp backend/bin/dataset_backend build/linux/x64/release/bundle/backend/bin/
+          chmod +x build/linux/x64/release/bundle/backend/bin/analysis_backend
+          chmod +x build/linux/x64/release/bundle/backend/bin/dataset_backend
+
+      - name: Create Linux TAR
+        run: |
+          tar -czf EvidenceEngineStudioOpen-Linux.tar.gz -C build/linux/x64/release bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EvidenceEngineStudioOpen-Linux
+          path: EvidenceEngineStudioOpen-Linux.tar.gz
